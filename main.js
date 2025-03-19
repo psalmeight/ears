@@ -1,5 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const dgram = require("dgram");
+const dayjs = require("dayjs");
+
+if (require("electron-squirrel-startup")) app.quit();
 
 let mainWindow;
 
@@ -20,12 +23,9 @@ app.on("ready", () => {
 let currentSocket;
 
 ipcMain.on("start-listening", (event, port, isListening) => {
-  console.log("Starting to listen...");
-
   if (!isListening && !!currentSocket) {
-    console.log("Closing previous socket...");
     currentSocket.close(() => {
-      console.log("Previous socket closed.");
+      displayMessage(`Previous listeners closed.`);
       currentSocket = null;
     });
     return;
@@ -35,13 +35,18 @@ ipcMain.on("start-listening", (event, port, isListening) => {
   currentSocket = socket;
   socket.on("message", (msg, rinfo) => {
     const minerMessage = msg.toString();
-    mainWindow.webContents.send(
-      "message-received",
-      `Received message: ${minerMessage} from ${rinfo.address}:${rinfo.port}`
-    );
+    displayMessage(`Received message from ${rinfo.address}:${rinfo.port}`);
+    displayMessage(msg);
   });
 
   socket.bind(port, () => {
-    console.log(`Listening on UDP port ${port}`);
+    displayMessage(`Listening on port ${port} (UDP)`);
   });
 });
+
+function displayMessage(message) {
+  mainWindow.webContents.send(
+    "message-received",
+    `${dayjs().format("MM/DD HH:mm:ss")}: ${message}`
+  );
+}
